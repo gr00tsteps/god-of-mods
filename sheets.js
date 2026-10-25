@@ -1,5 +1,5 @@
 "use strict";
-const API_URL = "COLE_AQUI_A_URL_DO_APPS_SCRIPT"; // termina em /exec
+const API_URL = "https://script.google.com/macros/s/AKfycbz3ZUOa38sK8TMIYimgnz6yb7GjjsMgsMTV1eqZdiBJuJNMS5LqvTolbuBRVlVje2qMKw/exec"; // termina em /exec
 
 async function apiGet(action) {
   const r = await fetch(API_URL + "?action=" + encodeURIComponent(action) + "&t=" + Date.now());
