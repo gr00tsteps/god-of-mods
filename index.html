@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gods Of Mods – Importador de Scores</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+<div class="row" style="justify-content:space-between;margin-bottom:4px"><h1 style="margin:0">Gods Of <span>Mods</span> 🏆</h1><button id="theme">🌙 Tema escuro</button></div>
+<p class="sub">Importe o <code>scores.db</code> do XSanity e gere a planilha de recordes de cada jogador. Os pontos de cada música seguem a fórmula (Score ÷ 1.000.000) × (PTS LVL + BÔNUS SONG) + PTS NOTA + PTS PLATE, conforme a nota e o plate obtidos. Scores sem plate não contam. Os 50 melhores contam para a pontuação geral.</p>
+
+<nav class="tabs"><button id="t-imp" class="on">Importar scores</button><button id="t-rk">Ranking geral</button><button id="t-song">Ranking Por Música</button></nav>
+
+<div id="tab-imp">
+<div class="card">
+<h2>1. Importar scores.db</h2>
+<p>Você pode enviar o arquivo de vários jogadores, um de cada vez ou todos juntos. O arquivo é lido no seu navegador.</p>
+<div class="drop" id="drop"><b>Clique ou arraste</b> o(s) arquivo(s) scores.db aqui</div>
+<input type="file" id="fdb" accept=".db,.sqlite" multiple hidden>
+<div class="msg" id="msgdb"></div>
+</div>
+
+<div class="card">
+<h2>2. Lista de músicas do evento</h2>
+<p>A lista vem da planilha do evento. Cada linha vale para um chart específico, pelo nome e pelo level.</p>
+<div class="row"><button id="loadlist">Carregar lista da planilha</button></div>
+<div class="msg" id="msglist"></div>
+</div>
+
+<div class="card" id="res" hidden>
+<div class="row" style="justify-content:space-between;margin-bottom:10px">
+<h2 style="margin:0">Classificação</h2>
+<div class="row"><button id="exp">Baixar CSV</button><button id="clr">Limpar tudo</button></div></div>
+<div class="msg" id="msgexp"></div><div class="msg" id="msgsend"></div>
+<div class="scroll"><table id="lb"></table></div>
+</div>
+<div id="players"></div>
+</div>
+
+<div id="tab-rk" hidden>
+<div class="card">
+<div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">Ranking geral</h2><div class="row"><span class="msg" id="rkmsg" style="margin:0"></span><button id="rkref">Atualizar</button></div></div>
+<div class="scroll"><table id="rktb"></table></div>
+</div>
+</div>
+
+<div id="tab-song" hidden>
+<div class="card">
+<div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">Ranking Por Música</h2><div class="row"><span class="msg" id="smsg" style="margin:0"></span><button id="sref">Atualizar</button></div></div>
+<div id="smenu">
+<div class="empty" style="padding:14px;margin-bottom:10px">Escolha uma música para ver o ranking.</div>
+<div class="sbox"><span class="sico">🔍</span><input id="sq" type="search" placeholder="Pesquisar música pelo nome…" autocomplete="off"></div>
+<div class="scount" id="scount"></div>
+<div class="songs" id="ssel"></div>
+</div>
+<div id="sres" hidden></div>
+</div>
+</div>
+</main>
+
+<script src="sheets.js" defer></script>
+<script src="script.js" defer></script>
+</body>
+</html>
