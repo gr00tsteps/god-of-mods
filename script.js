@@ -215,7 +215,7 @@ async function loadSongs() {
   } catch (e) { m.className = "msg err"; m.textContent = "Não foi possível ler os dados."; }
 }
 function fillSongs() {
-  const q = norm($("sq").value), arr = SL.filter(s => !q || norm(s.name).includes(q));
+   const q = norm($("sq").value), arr = sortSongs(SL.filter(s => !q || norm(s.name).includes(q)));
   $("scount").textContent = arr.length + " música" + (arr.length === 1 ? "" : "s");
   $("ssel").innerHTML = arr.map(s => `<button class="song${s.key === SCUR ? " on" : ""}" data-k="${esc(s.key)}"><span>${esc(s.name)}</span><b class="lv ${s.lvl >= 20 ? "hi" : ""}">${s.lvl || "?"}</b></button>`).join("") || "<div class='msg'>Nenhuma música encontrada.</div>";
   renderSong();
