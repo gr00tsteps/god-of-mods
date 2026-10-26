@@ -232,12 +232,6 @@ function setSort(by) {
   if (SO.by === by) SO.dir *= -1; else { SO.by = by; SO.dir = 1; }
   updSort(); if (SD) fillSongs();
 }
-let SO = { by: "name", dir: 1 };
-function sortSongs(a) {
-  const d = SO.dir;
-  return a.sort((x, y) => SO.by === "lvl"
-    ? (x.lvl - y.lvl) * d || x.name.localeCompare(y.name)
-    : x.name.localeCompare(y.name) * d || x.lvl - y.lvl);
 }
 function updSort() {
   const ar = SO.dir === 1 ? " ↑" : " ↓", n = $("so-name"), l = $("so-lvl");
