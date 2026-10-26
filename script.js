@@ -134,4 +134,151 @@ $("exp").onclick = () => {
 };
 
 /* ---- importar arquivos ---- */
-async
+async function handleDb(files) {
+  const m = $("msgdb"); m.className = "msg"; m.textContent = "Lendo…";
+  try {
+    let n = 0; for (const f of files) n += await importDb(f);
+    render(); if (!list) loadList(); m.className = "msg ok"; m.textContent = `${files.length} arquivo(s) importado(s): ${n} scores lidos, ${players.size} jogador(es) no total.`;
+  } catch (e) { m.className = "msg err"; m.textContent = "Erro ao ler o arquivo: " + e.message; }
+}
+const drop = $("drop");
+drop.onclick = () => $("fdb").click();
+$("fdb").onchange = e => { handleDb([...e.target.files]); e.target.value = ""; };
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); handleDb([...e.dataTransfer.files]); };
+
+/* ---- lista de músicas (vem do Apps Script) ---- */
+async function loadList() {
+  const m = $("msglist"); m.className = "msg"; m.textContent = "Lendo a lista…";
+  try {
+    const d = await apiGet("list"), seen = new Set();
+    list = d.list.map(x => ({ ...x, n: norm(x.name) })).filter(x => x.n && !seen.has(x.n + "|" + x.lvl) && seen.add(x.n + "|" + x.lvl));
+    m.className = "msg ok"; m.textContent = list.length + " músicas na lista do evento."; render();
+  } catch (e) { list = null; m.className = "msg err"; m.textContent = "Não foi possível ler a lista: " + (e.message || ""); }
+}
+$("loadlist").onclick = loadList;
+loadList();
+
+/* ---- envio com código do jogador ---- */
+$("lb").oninput = e => { if (e.target.classList.contains("code")) CODES[e.target.dataset.g] = e.target.value; };
+$("lb").onclick = e => { const b = e.target.closest(".send1"); if (b) sendOne(b.dataset.g, b); };
+async function sendOne(g, btn) {
+  const x = window._all.find(y => y.P.guid === g), m = $("msgsend"), code = (CODES[g] || "").trim();
+  m.className = "msg";
+  if (!code) { m.className = "msg err"; m.textContent = "Digite o código do jogador " + x.P.name + "."; return; }
+  if (!list) await loadList();
+  if (!list) { m.className = "msg err"; m.textContent = "Não foi possível carregar a lista de músicas."; return; }
+  const scores = x.r.filter(r => r.played !== false && !r.invalid).map(r => ({ entry: r.entry, lvl: r.lvl, ps: r.ps, pct: r.pct, grade: r.grade, plate: r.plate }));
+  btn.disabled = true; m.textContent = "Enviando " + x.P.name + "…";
+  try {
+    const res = await apiPost({ action: "submit", code, guid: g, scores });
+    if (!res.ok) throw new Error(res.error || "falha no envio");
+    m.className = "msg ok"; m.textContent = res.message;
+  } catch (err) { m.className = "msg err"; m.textContent = "Erro ao enviar: " + (err.message || ""); }
+  btn.disabled = false;
+}
+
+/* ---- ranking geral (leitura pública, a cada 30 s) ---- */
+let rkTimer = null, rkBusy = false;
+async function loadRanking() {
+  if (rkBusy) return; rkBusy = true;
+  const m = $("rkmsg"); m.className = "msg";
+  try {
+    const d = await apiGet("ranking"), rows = d.rows || [], med = ["🥇", "🥈", "🥉"];
+    $("rktb").innerHTML = "<tr><th>Rank</th><th>Jogador</th><th class='n'>Godbility</th></tr>" + (rows.length ? rows.map((r, i) => `<tr><td>${(med[i] || "🏅") + " "}${esc(r[0] || i + 1)}</td><td>${esc(r[1])}</td><td class="n tot">${esc(r[2] || "0,00")}</td></tr>`).join("") : "<tr><td colspan='3'>Nenhum jogador no ranking ainda.</td></tr>");
+    m.textContent = "Atualizado às " + new Date().toLocaleTimeString("pt-BR") + " (a cada 30 s)";
+  } catch (e) { m.className = "msg err"; m.textContent = "Não foi possível ler o ranking."; }
+  rkBusy = false;
+}
+
+/* ---- ranking por música ---- */
+let SD = null, SL = [], SAt = 0, SCUR = null, ST = 0;
+let SO = { by: "name", dir: 1 };
+async function loadSongs() {
+  const m = $("smsg"); m.className = "msg"; m.textContent = "Lendo os dados dos jogadores…";
+  try {
+    const d = await apiGet("songs"), names = new Map(), D = new Map();
+    d.list.forEach(x => names.set(norm(x.name) + "|" + x.lvl, { name: x.name, lvl: x.lvl }));
+    for (const pl of d.players) {
+      for (const r of pl.rows) {
+        const l = parseInt(r[1], 10) || 0, k = norm(r[2]) + "|" + l;
+        if (!names.has(k)) names.set(k, { name: r[2], lvl: l });
+        if (!(r[4] || num(r[8]) > 0)) continue;
+        if (!D.has(k)) D.set(k, []);
+        D.get(k).push({ p: pl.tab, nota: r[4] || "", plate: r[5] || "", score: r[6] || "", pct: r[7] || "", pts: r[8] || "0", v: num(r[8]) });
+      }
+    }
+    SD = D; SAt = Date.now();
+    SL = [...names].map(([key, o]) => ({ key, ...o }));
+    m.textContent = "Atualizado às " + new Date().toLocaleTimeString("pt-BR");
+    fillSongs();
+  } catch (e) { m.className = "msg err"; m.textContent = "Não foi possível ler os dados."; }
+}
+function sortSongs(a) {
+  const d = SO.dir;
+  return a.sort((x, y) => SO.by === "lvl"
+    ? (x.lvl - y.lvl) * d || x.name.localeCompare(y.name)
+    : x.name.localeCompare(y.name) * d || x.lvl - y.lvl);
+}
+function updSort() {
+  const ar = SO.dir === 1 ? " ↑" : " ↓", n = $("so-name"), l = $("so-lvl");
+  if (!n || !l) return;
+  n.classList.toggle("on", SO.by === "name");
+  l.classList.toggle("on", SO.by === "lvl");
+  n.textContent = "Nome" + (SO.by === "name" ? ar : "");
+  l.textContent = "Nível" + (SO.by === "lvl" ? ar : "");
+}
+function setSort(by) {
+  if (SO.by === by) SO.dir *= -1; else { SO.by = by; SO.dir = 1; }
+  updSort(); if (SD) fillSongs();
+}
+function fillSongs() {
+  const q = norm($("sq").value), arr = sortSongs(SL.filter(s => !q || norm(s.name).includes(q)));
+  $("scount").textContent = arr.length + " música" + (arr.length === 1 ? "" : "s");
+  $("ssel").innerHTML = arr.map(s => `<button class="song${s.key === SCUR ? " on" : ""}" data-k="${esc(s.key)}"><span>${esc(s.name)}</span><b class="lv">${s.lvl || "?"}</b></button>`).join("") || "<div class='msg'>Nenhuma música encontrada.</div>";
+  renderSong();
+}
+const PC = { perfect: "#e6a700", ultimate: "#a23cf0", extreme: "#e0453a", superb: "#2f7de1", marvelous: "#1aa36b", talented: "#14a3a3", fair: "#8a8aa0", rough: "#8a8aa0" };
+function renderSong() {
+  const s = SL.find(x => x.key === SCUR), box = $("sres");
+  if (!s) { box.innerHTML = ""; $("smenu").hidden = false; box.hidden = true; return; }
+  const rows = (SD.get(s.key) || []).slice().sort((a, b) => b.v - a.v);
+  const hd = `<button id="sback" class="back">← Voltar à lista</button><div class="rhead"><h3>${esc(s.name)}</h3><b class="lv">Lv ${s.lvl}</b><span class="pill">${rows.length} jogador${rows.length === 1 ? "" : "es"}</span></div>`;
+  box.innerHTML = hd + (rows.length ? rows.map((r, i) => {
+    const c = PC[strip(r.plate).replace("game", "")] || "#8a8aa0";
+    return `<div class="rk r${i + 1}"><div class="pos">${i < 3 ? ["🥇", "🥈", "🥉"][i] : i + 1}</div><div class="who"><b>${esc(r.p)}</b><span><i class="pl" style="background:${c}"></i>${esc(r.plate) || "—"}${r.nota ? " · " + esc(r.nota) : ""}</span></div><div class="sc"><span>${esc(r.score)}</span><small>${r.pct ? esc(r.pct) + "%" : ""}</small></div><div class="gb">${esc(r.pts)}</div></div>`;
+  }).join("") : "<div class='empty'>Ninguém jogou esta música ainda.</div>");
+}
+function setSongView(res) {
+  if (res) ST = $("ssel").scrollTop;
+  $("smenu").hidden = res; $("sres").hidden = !res;
+  if (!res) $("ssel").scrollTop = ST;
+}
+$("sq").oninput = () => { if (SD) fillSongs(); };
+$("sres").onclick = e => { if (e.target.closest("#sback")) setSongView(false); };
+$("ssel").onclick = e => { const b = e.target.closest(".song"); if (!b) return; SCUR = b.dataset.k; $("ssel").querySelectorAll(".song").forEach(x => x.classList.toggle("on", x === b)); renderSong(); setSongView(true); };
+$("sref").onclick = loadSongs;
+if ($("so-name")) $("so-name").onclick = () => setSort("name");
+if ($("so-lvl")) $("so-lvl").onclick = () => setSort("lvl");
+updSort();
+
+/* ---- abas ---- */
+function showTab(t) {
+  for (const k of ["imp", "rk", "song"]) { $("tab-" + k).hidden = t !== k; $("t-" + k).classList.toggle("on", t === k); }
+  clearInterval(rkTimer);
+  if (t === "rk") { loadRanking(); rkTimer = setInterval(loadRanking, 30000); }
+  if (t === "song" && (!SD || Date.now() - SAt > 60000)) loadSongs();
+}
+$("t-imp").onclick = () => showTab("imp");
+$("t-rk").onclick = () => showTab("rk");
+$("t-song").onclick = () => showTab("song");
+$("rkref").onclick = loadRanking;
+
+/* ---- tema claro/escuro ---- */
+const curTheme = () => document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+function applyTheme(t) { document.documentElement.dataset.theme = t; $("theme").textContent = t === "dark" ? "☀️ Tema claro" : "🌙 Tema escuro"; }
+try { const s = localStorage.getItem("gom-theme"); if (s) document.documentElement.dataset.theme = s; } catch (e) {}
+applyTheme(curTheme());
+$("theme").onclick = () => { const t = curTheme() === "dark" ? "light" : "dark"; applyTheme(t); try { localStorage.setItem("gom-theme", t); } catch (e) {} };
+$("clr").onclick = () => { players = new Map(); $("msgdb").textContent = ""; render(); };
