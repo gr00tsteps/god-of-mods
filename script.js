@@ -186,7 +186,7 @@ async function loadRanking() {
   const m = $("rkmsg"); m.className = "msg";
   try {
     const d = await apiGet("ranking"), rows = d.rows || [], med = ["🥇", "🥈", "🥉"];
-    $("rktb").innerHTML = "<tr><th>Rank</th><th>Jogador</th><th class='n'>Godbility</th></tr>" + (rows.length ? rows.map((r, i) => `<tr><td>${i < 3 ? med[i] + "🏅" : ""}{esc(r[0] || i + 1)}</td><td>${esc(r[1])}</td><td class="n tot">${esc(r[2] || "0,00")}</td></tr>`).join("") : "<tr><td colspan='3'>Nenhum jogador no ranking ainda.</td></tr>");
+    $("rktb").innerHTML = "<tr><th>Rank</th><th>Jogador</th><th class='n'>Godbility</th></tr>" + (rows.length ? rows.map((r, i) => `<tr><td>${i < 3 ? med[i] + "🏅" : ""}${esc(r[0] || i + 1)}</td><td>${esc(r[1])}</td><td class="n tot">${esc(r[2] || "0,00")}</td></tr>`).join("") : "<tr><td colspan='3'>Nenhum jogador no ranking ainda.</td></tr>");
     m.textContent = "Atualizado às " + new Date().toLocaleTimeString("pt-BR") + " (a cada 30 s)";
   } catch (e) { m.className = "msg err"; m.textContent = "Não foi possível ler o ranking."; }
   rkBusy = false;
