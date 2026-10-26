@@ -214,6 +214,24 @@ async function loadSongs() {
     fillSongs();
   } catch (e) { m.className = "msg err"; m.textContent = "Não foi possível ler os dados."; }
 }
+let SO = { by: "name", dir: 1 };
+function sortSongs(a) {
+  const d = SO.dir;
+  return a.sort((x, y) => SO.by === "lvl"
+    ? (x.lvl - y.lvl) * d || x.name.localeCompare(y.name)
+    : x.name.localeCompare(y.name) * d || x.lvl - y.lvl);
+}
+function updSort() {
+  const ar = SO.dir === 1 ? " ↑" : " ↓";
+  $("so-name").classList.toggle("on", SO.by === "name");
+  $("so-lvl").classList.toggle("on", SO.by === "lvl");
+  $("so-name").textContent = "Nome" + (SO.by === "name" ? ar : "");
+  $("so-lvl").textContent = "Nível" + (SO.by === "lvl" ? ar : "");
+}
+function setSort(by) {
+  if (SO.by === by) SO.dir *= -1; else { SO.by = by; SO.dir = 1; }
+  updSort(); if (SD) fillSongs();
+}
 function fillSongs() {
    const q = norm($("sq").value), arr = sortSongs(SL.filter(s => !q || norm(s.name).includes(q)));
   $("scount").textContent = arr.length + " música" + (arr.length === 1 ? "" : "s");
@@ -240,6 +258,8 @@ $("sq").oninput = () => { if (SD) fillSongs(); };
 $("sres").onclick = e => { if (e.target.closest("#sback")) setSongView(false); };
 $("ssel").onclick = e => { const b = e.target.closest(".song"); if (!b) return; SCUR = b.dataset.k; $("ssel").querySelectorAll(".song").forEach(x => x.classList.toggle("on", x === b)); renderSong(); setSongView(true); };
 $("sref").onclick = loadSongs;
+$("so-name").onclick = () => setSort("name");
+$("so-lvl").onclick = () => setSort("lvl");
 
 /* ---- abas ---- */
 function showTab(t) {
